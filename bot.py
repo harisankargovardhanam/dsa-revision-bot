@@ -3,6 +3,8 @@
 
 import logging
 import os
+import threading
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
@@ -356,7 +358,23 @@ def main():
     app.run_polling(drop_pending_updates=True)
 
 
+def run_health_server():
+    port = int(os.getenv("PORT", 8080))
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"OK")
+
+        def log_message(self, *args):
+            pass  # silence access logs
+
+    HTTPServer(("0.0.0.0", port), Handler).serve_forever()
+
+
 if __name__ == "__main__":
     import asyncio
+    threading.Thread(target=run_health_server, daemon=True).start()
     asyncio.set_event_loop(asyncio.new_event_loop())
     main()
