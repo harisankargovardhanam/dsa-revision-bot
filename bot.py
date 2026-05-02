@@ -320,6 +320,16 @@ async def job_send_reminders(context: ContextTypes.DEFAULT_TYPE):
         await send_reminder(context.bot, q["chat_id"], dict(q))
 
 
+# ─── Error Handler ───────────────────────────────────────────────────────────
+
+async def handle_error(update: object, context: ContextTypes.DEFAULT_TYPE):
+    from telegram.error import Conflict
+    if isinstance(context.error, Conflict):
+        logger.warning("Conflict: another instance is running. Will retry automatically.")
+    else:
+        logger.error(f"Update {update} caused error: {context.error}")
+
+
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
@@ -350,6 +360,7 @@ def main():
     app.add_handler(conv)
     app.add_handler(CallbackQueryHandler(handle_done, pattern=r"^done_"))
     app.add_handler(CallbackQueryHandler(handle_snooze, pattern=r"^(snooze4|tomorrow)_"))
+    app.add_error_handler(handle_error)
 
     # Check every hour; re-remind every 4h until marked done
     app.job_queue.run_repeating(job_send_reminders, interval=3600, first=10)
